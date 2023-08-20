@@ -1,59 +1,20 @@
 import mne
 import torch
-import logging
 import argparse
 import warnings
 import traceback
-import subprocess
 import numpy as np
 import pandas as pd
 from silver.io import EEGInterface
 from collections import defaultdict
-from datetime import datetime, timezone
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from eeg2vec.pre_process import normalize_scale_interpolate, annotate_nans
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-def execute_shell_command(command_string : str, verbose=1) -> bool:
-    """
-    Execute shell commands
-    
-    Parameters
-    ----------
-    command_string : str
-        Command to execute
-    verbose: int, default=1
-        log verbose statements
-        
-    Returns
-    -------
-    bool: True/False
-    
-    """
-    try:
-        _mv_process = subprocess.Popen(command_string,
-                                        shell=True,
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE)
-        stdout, stderr = _mv_process.communicate()
-    except (OSError, KeyboardInterrupt) as e:
-        _mv_process.kill()
+# logging specific imports
+from utils import initialize_logging, save_log_to_gcs
 
-    if _mv_process.returncode == 0:
-        # if there is no command output then return True
-        command_output = stdout.decode('utf-8')
-        if command_output:
-            return command_output
-        else:
-            return True
-
-    if verbose >= 1:
-        logging.error(stderr.decode('utf-8'))
-        time_record = datetime.now(timezone.utc)
-        logging.error(f"[{time_record}] Moving study failed")
-
-    return False
 
 def process_eegs(uid: str, 
                  gcs_root: str, 
@@ -181,21 +142,14 @@ def pre_process(df: pd.DataFrame,
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--job-dir", type=str, default="", help="dir to save logs")
+    parser.add_argument("--job_dir", type=str, default="", help="dir to save logs")
     args = parser.parse_args()
     
     if args.job_dir:
         # Configure logging
-        log_file_path = "./mayo_eegs_pretrained.log"
-        logging.basicConfig(level=logging.INFO, 
-                            format="%(asctime)s - %(levelname)s - %(message)s",
-                            handlers=[
-                                logging.FileHandler(log_file_path),  # Log to a file
-                                logging.StreamHandler()  # Log to the console
-                            ])
+        log_file_path = initialize_logging(name="mayo_eeg_pretraining_15984")
         
-    
-
+    # Load the dataset
     df = pd.read_csv("gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/datasets/v20230819/eeg_pretraining_15984.csv")
     gcs_root = "gs://ml-8880-phi-shared-aif-us-p/eeg_prod/processed_parquet/eeg"
     
@@ -209,6 +163,5 @@ if __name__ == "__main__":
     
     if args.job_dir:
         # write log file to job-dir
-        command = f"gsutil -m cp -r {log_file_path} {args.job_dir}/"
-        status = execute_shell_command(command)
+        save_log_to_gcs(log_file_path, args.job_dir)
     
