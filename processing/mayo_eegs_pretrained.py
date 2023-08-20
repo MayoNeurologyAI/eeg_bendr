@@ -122,7 +122,8 @@ def process_eegs(uid: str,
 def pre_process(df: pd.DataFrame, 
                 gcs_root,
                 output_path: str,
-                output_dataset: str):
+                output_dataset: str,
+                n_jobs: int = 8):
     
     
     # Parallelize the process
@@ -130,7 +131,7 @@ def pre_process(df: pd.DataFrame,
     gcs_root = [gcs_root] * len(uids)
     output_path = [output_path] * len(uids)
     
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=n_jobs) as executor:
         results = list(executor.map(process_eegs, uids, gcs_root, output_path))
     
     # Create a dataframe from the results
@@ -143,6 +144,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--job_dir", type=str, default="", help="dir to save logs")
+    parser.add_argument("--jobs", type=int, default=8, help="number of parallel jobs")
     args = parser.parse_args()
     
     if args.job_dir:
@@ -158,7 +160,8 @@ if __name__ == "__main__":
     pre_process(df = df, 
                 gcs_root = gcs_root, 
                 output_path = "gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/pre_processed_data/v20230819/mayo_eeg_pretraining_15984_epochs",
-                output_dataset = "gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/datasets/v20230819/mayo_eeg_pretraining_15984_epochs.csv")
+                output_dataset = "gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/datasets/v20230819/mayo_eeg_pretraining_15984_epochs.csv",
+                n_jobs = args.jobs)
 
     
     if args.job_dir:
