@@ -1,5 +1,6 @@
 import mne
 import torch
+import warnings
 import traceback
 import numpy as np
 import pandas as pd
@@ -7,6 +8,8 @@ from silver.io import EEGInterface
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from eeg2vec.pre_process import normalize_scale_interpolate, annotate_nans
+
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
 def process_eegs(uid: str, 
@@ -82,16 +85,16 @@ def process_eegs(uid: str,
         good_epochs = epochs[5:-1]
         
         for epoch_index, epoch in enumerate(good_epochs):
-            x = normalize_scale_interpolate(epoch.get_data()[0],
+            x = normalize_scale_interpolate(epoch,
                                             sequence_len=tlen,
                                             new_sfreq=new_sfreq,
                                             dataset_max = 0.007,
                                             dataset_min = -0.007)
             
             if x is not None:
-                result = { 'UID': uid,
-                           'data': x.numpy(),
-                           'epoch': epoch_index
+                result = { 'UID': [uid],
+                           'data': [x.numpy()],
+                           'epoch': [epoch_index]
                 }
                 pd.DataFrame(result).to_pickle(f"{output_path}/{uid}_{epoch_index}.pkl")
                 
@@ -106,7 +109,10 @@ def process_eegs(uid: str,
         print(uid)
         traceback.print_exc()
         
-        return False
+        return {"UID" : [],
+                "epoch": [],
+                "file_path": []
+               }
 
 
 def pre_process(df: pd.DataFrame, 
@@ -127,19 +133,19 @@ def pre_process(df: pd.DataFrame,
     result_df = pd.concat([pd.DataFrame(d) for d in results], ignore_index=True)
 
     # Save the dataframe in pkl format
-    result_df.to_parquet(output_path)
+    result_df.to_csv(output_dataset)
 
 if __name__ == "__main__":
-    
-    df = pd.read_csv("gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/datasets/v20230819/eeg_pretraining_15984.csv")
+
+    df = pd.read_csv("gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/datasets/v20230819/eeg_pretraining_15984.csv").head(8)
     gcs_root = "gs://ml-8880-phi-shared-aif-us-p/eeg_prod/processed_parquet/eeg"
     
     print(" Processing Data")
     
     pre_process(df = df, 
                 gcs_root = gcs_root, 
-                output_path = "gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/pre_processed_data",
-                output_dataset = "gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/datasets/v20230819/eeg_pretraining_15984_epochs.csv")
+                output_path = "gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/pre_processed_data/v20230819/mayo_eeg_pretraining_15984_epochs",
+                output_dataset = "gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/datasets/v20230819/mayo_eeg_pretraining_15984_epochs.csv")
 
     
 
