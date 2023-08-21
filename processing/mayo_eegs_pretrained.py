@@ -151,15 +151,15 @@ if __name__ == "__main__":
         log_file_path = initialize_logging(name="mayo_eeg_pretraining_15984")
         
     # Load the dataset
-    df = pd.read_csv("gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/datasets/v20230819/eeg_pretraining_15984.csv")
+    df = pd.read_csv("gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/datasets/v20230819/eeg_pretraining_10405.csv")
     gcs_root = "gs://ml-8880-phi-shared-aif-us-p/eeg_prod/processed_parquet/eeg"
     
     print(" Processing Data")
     
     pre_process(df = df, 
                 gcs_root = gcs_root, 
-                output_path = "gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/pre_processed_data/v20230819/mayo_eeg_pretraining_15984_epochs",
-                output_dataset = "gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/datasets/v20230819/mayo_eeg_pretraining_15984_epochs.csv",
+                output_path = "gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/pre_processed_data/v20230819/mayo_eeg_pretraining_10405_epochs",
+                output_dataset = "gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/datasets/v20230819/mayo_eeg_pretraining_10405_epochs.csv",
                 n_jobs = args.jobs)
 
     
