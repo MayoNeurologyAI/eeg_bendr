@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from silver.io import EEGInterface
 from collections import defaultdict
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from joblib import Parallel, delayed
 from eeg2vec.pre_process import normalize_scale_interpolate, annotate_nans
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -127,12 +127,11 @@ def pre_process(df: pd.DataFrame,
     
     
     # Parallelize the process
-    uids = df['UID'].to_list()
-    gcs_root = [gcs_root] * len(uids)
-    output_path = [output_path] * len(uids)
+    uids = list(set(df['UID'].to_list()))
+    gcs_root = gcs_root
+    output_path = output_path
     
-    with ThreadPoolExecutor(max_workers=n_jobs) as executor:
-        results = list(executor.map(process_eegs, uids, gcs_root, output_path))
+    results = Parallel(n_jobs=n_jobs)(delayed(process_eegs)(uid, gcs_root, output_path) for uid in uids)
     
     # Create a dataframe from the results
     result_df = pd.concat([pd.DataFrame(d) for d in results], ignore_index=True)
