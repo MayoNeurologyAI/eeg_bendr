@@ -127,7 +127,7 @@ def pre_process(df: pd.DataFrame,
     
     
     # Parallelize the process
-    uids = list(set(df['UID'].to_list()))
+    uids = list(set(df['uid'].to_list()))
     gcs_root = gcs_root
     output_path = output_path
     
