@@ -6,12 +6,12 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from torchvision import transforms
 from eeg2vec.dataset import EpochDataset
-from eeg2vec.transforms import UidToEpoch, RandomTemporalEndCrop
+from eeg2vec.transforms import UidToEpoch, RandomTemporalCrop
 from eeg2vec.model import FoundationalModel, Encoder, Contextualizer
 
 from utils import *
 
-def _split_data(df, train=0.7, eval=0.1, test=0.2):
+def _split_data(df, train_prop=0.9, eval_prop=0.05, test_prop=0.05):
     """ 
     This function splits the data into train, test, and eval sets
     such that each set contains unique UIDs
@@ -33,13 +33,13 @@ def _split_data(df, train=0.7, eval=0.1, test=0.2):
     """
 
     # Ensure the proportions sum to 1
-    assert train + test + eval == 1, "Proportions do not sum to 1."
+    assert train_prop + test_prop + eval_prop == 1, "Proportions do not sum to 1."
 
     uids = np.random.permutation(df['UID'].unique())
 
     # Determine the size of each split
-    train_size = int(train * len(uids))
-    test_size = int(test * len(uids))
+    train_size = int(train_prop * len(uids))
+    test_size = int(test_prop * len(uids))
 
     # Split the UIDs accorsing to the proportions
     train_uids = uids[:train_size]
@@ -47,9 +47,9 @@ def _split_data(df, train=0.7, eval=0.1, test=0.2):
     eval_uids = uids[train_size+test_size:]
     
     # Split the data
-    train_df = df[df['UID'].isin(train_uids)].sample(frac=1, random_state=42)
-    test_df = df[df['UID'].isin(test_uids)].sample(frac=1, random_state=42)
-    eval_df = df[df['UID'].isin(eval_uids)].sample(frac=1, random_state=42)
+    train_df = df[df['UID'].isin(train_uids)].sample(frac=1, random_state=42).reset_index(drop=True)
+    test_df = df[df['UID'].isin(test_uids)].sample(frac=1, random_state=42).reset_index(drop=True)
+    eval_df = df[df['UID'].isin(eval_uids)].sample(frac=1, random_state=42).reset_index(drop=True)
 
     return train_df, eval_df, test_df
 
@@ -177,7 +177,7 @@ def train_model(model,
         total_loss = 0
         total_score = 0
         for i, inputs in enumerate(train_loader):
-            inputs= inputs.to(device)
+            inputs= inputs['epoch'].to(device)
             
             if torch.isnan(inputs).any():
                 print("Nans in the input")
@@ -234,7 +234,7 @@ def test_model(model, test_loader, device):
         total_score = 0
         total_loss = 0
         for inputs in test_loader:
-            inputs = inputs.to(device)
+            inputs = inputs['epoch'].to(device)
             
             logits, z, mask, embedding = model(inputs)
             outputs = [logits, z, mask]
@@ -254,6 +254,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--job_dir", type=str, default="", help="dir to save logs")
+    parser.add_argument("--jobs", type=int, default=8, help="number of parallel jobs")
     args = parser.parse_args()
     
     if args.job_dir:
@@ -261,8 +262,8 @@ if __name__ == "__main__":
         log_file_path = initialize_logging(name="mayo_eeg_pretraining_model")
     
     # Load the meta data
-    df = pd.read_csv("gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/ \
-                     datasets/v20230819/mayo_eeg_pretraining_10405_epochs.csv", index_col=0)
+    df = pd.read_csv("gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/"
+                     "datasets/v20230819/mayo_eeg_pretraining_10405_epochs.csv", index_col=0)
     
     # Set the random seed
     np.random.seed(42)
@@ -271,18 +272,22 @@ if __name__ == "__main__":
     train_df, valid_df, test_df = _split_data(df)
     
     # Create the train, valid and test datasets
-    transform = transforms.Compose([
+    train_transform = transforms.Compose([
                         UidToEpoch(),
-                        RandomTemporalEndCrop()
+                        RandomTemporalCrop()
                         ])
-    dataset_train = EpochDataset(train_df, transform=transform)
-    dataset_test = EpochDataset(test_df, transform=transform)
-    dataset_valid = EpochDataset(valid_df, transform=transform)
+    test_transform = transforms.Compose([
+                        UidToEpoch()
+                        ])
+    
+    dataset_train = EpochDataset(train_df, transform=train_transform)
+    dataset_test = EpochDataset(test_df, transform=test_transform)
+    dataset_valid = EpochDataset(valid_df, transform=test_transform)
     
     # Create the train, valid and test data loaders
-    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=64, num_workers=-1, shuffle=True)
-    valid_loader = torch.utils.data.DataLoader(dataset_valid, batch_size=64, num_workers=-1, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=64, num_workers=-1, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=64, num_workers=args.jobs, shuffle=True)
+    valid_loader = torch.utils.data.DataLoader(dataset_valid, batch_size=64, num_workers=args.jobs, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=64, num_workers=args.jobs, shuffle=True)
     
     # Set the device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
