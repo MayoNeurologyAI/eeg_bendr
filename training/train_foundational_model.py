@@ -94,7 +94,7 @@ def _plot_curve(train_losses,
     # Plotting test loss
     plt.plot(epochs, valid_losses, label=f'Validation {metric}', marker='o', linestyle='-')
 
-    plt.title(f'Training and Testing {metric}')
+    plt.title(f'Training and Validation {metric}')
     plt.xlabel('Epochs')
     plt.legend()
 
@@ -117,7 +117,7 @@ def get_foundational_model() -> FoundationalModel:
     """
     
     encoder = Encoder(in_features=20, encoder_h=512, dropout=0.0)
-    contextualizer = Contextualizer(in_features=512, layer_drop=0.001)
+    contextualizer = Contextualizer(in_features=512, layer_drop=0.01)
     model = FoundationalModel(encoder, 
                               contextualizer, 
                               mask_rate=0.065, 
