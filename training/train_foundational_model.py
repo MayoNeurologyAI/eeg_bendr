@@ -293,9 +293,9 @@ if __name__ == "__main__":
     dataset_valid = EpochDataset(valid_df, transform=test_transform)
     
     # Create the train, valid and test data loaders
-    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=64, num_workers=args.jobs, shuffle=True)
-    valid_loader = torch.utils.data.DataLoader(dataset_valid, batch_size=64, num_workers=args.jobs, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=64, num_workers=args.jobs, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=16, num_workers=args.jobs, shuffle=True)
+    valid_loader = torch.utils.data.DataLoader(dataset_valid, batch_size=16, num_workers=args.jobs, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=16, num_workers=args.jobs, shuffle=True)
     
     # check if dataloader is working
     batch_train = next(iter(train_loader))
