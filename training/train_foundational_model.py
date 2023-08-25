@@ -310,6 +310,10 @@ if __name__ == "__main__":
     # Get the foundational model
     model = get_foundational_model().to(device)
     
+    if torch.cuda.device_count() > 1:
+        print(f"Using {torch.cuda.device_count()} GPUs!")
+        model = torch.nn.DataParallel(model)
+    
     # Set the optimizer
     optimizer = torch.optim.Adam(model.parameters(), 
                                  lr=0.00002, 
