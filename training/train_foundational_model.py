@@ -1,5 +1,6 @@
 import torch
 import argparse
+import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -266,11 +267,17 @@ if __name__ == "__main__":
     df = pd.read_csv("gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/"
                      "datasets/v20230819/mayo_eeg_pretraining_10405_epochs.csv", index_col=0)
     
+    print(f"Number of unique UIDs: {len(df['UID'].unique())}")
+    
     # Set the random seed
     np.random.seed(42)
     
     # Split the data into train, test, and eval
     train_df, valid_df, test_df = _split_data(df)
+    
+    print(f"Number of train UIDs: {len(train_df['UID'].unique())}, Epochs: {len(train_df)}")
+    print(f"Number of val UIDs: {len(valid_df['UID'].unique())}, Epochs: {len(valid_df)}")
+    print(f"Number of test UIDs: {len(test_df['UID'].unique())}, Epochs: {len(test_df)}")
     
     # Create the train, valid and test datasets
     train_transform = transforms.Compose([
@@ -290,8 +297,14 @@ if __name__ == "__main__":
     valid_loader = torch.utils.data.DataLoader(dataset_valid, batch_size=64, num_workers=args.jobs, shuffle=True)
     test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=64, num_workers=args.jobs, shuffle=True)
     
+    # check if dataloader is working
+    batch_train = next(iter(train_loader))
+    print (f"Train batch shape: {batch_train['epoch'].shape}")
+    
     # Set the device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    
+    print (f"Using device: {device}")
     
     # Get the foundational model
     model = get_foundational_model().to(device)
@@ -301,6 +314,8 @@ if __name__ == "__main__":
                                  lr=0.00002, 
                                  weight_decay=0.01, 
                                  betas=[0.9, 0.98])
+    
+    print(f"Model Summary: {model}")
     
     # train the model
     output_path = "./pretraining_results/"
