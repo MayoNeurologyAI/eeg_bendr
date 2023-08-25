@@ -288,7 +288,7 @@ if __name__ == "__main__":
                         UidToEpoch()
                         ])
     
-    dataset_train = EpochDataset(train_df, transform=train_transform)
+    dataset_train = EpochDataset(train_df, transform=test_transform)
     dataset_test = EpochDataset(test_df, transform=test_transform)
     dataset_valid = EpochDataset(valid_df, transform=test_transform)
     
