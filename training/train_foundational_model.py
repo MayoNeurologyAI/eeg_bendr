@@ -179,7 +179,7 @@ def train_model(model,
         total_loss = 0
         total_score = 0
         for i, inputs in enumerate(train_loader):
-            inputs= inputs['epoch'].to(device)
+            inputs= inputs['epoch'].float().to(device)
             
             if torch.isnan(inputs).any():
                 print("Nans in the input")
