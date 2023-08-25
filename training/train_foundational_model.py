@@ -236,7 +236,7 @@ def test_model(model, test_loader, device):
         total_score = 0
         total_loss = 0
         for inputs in test_loader:
-            inputs = inputs['epoch'].to(device)
+            inputs = inputs['epoch'].float().to(device)
             
             logits, z, mask, embedding = model(inputs)
             outputs = [logits, z, mask]
