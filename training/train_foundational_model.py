@@ -125,7 +125,8 @@ def get_foundational_model() -> FoundationalModel:
                               temp=0.1, 
                               encoder_grad_frac=0.1, 
                               num_negatives=20, 
-                              enc_feat_l2=1.0)
+                              enc_feat_l2=1.0,
+                              multi_gpu=True)
     
     return model
 
