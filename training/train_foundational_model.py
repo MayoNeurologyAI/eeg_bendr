@@ -1,3 +1,4 @@
+import time
 import torch
 import argparse
 import logging
@@ -180,7 +181,7 @@ def train_model(model,
         total_loss = 0
         total_score = 0
         for i, inputs in enumerate(train_loader):
-            inputs= inputs['epoch'].float().to(device)
+            inputs= inputs.float().to(device)
             
             if torch.isnan(inputs).any():
                 print("Nans in the input")
@@ -239,7 +240,7 @@ def test_model(model, test_loader, device):
         total_score = 0
         total_loss = 0
         for inputs in test_loader:
-            inputs = inputs['epoch'].float().to(device)
+            inputs = inputs.float().to(device)
             
             logits, z, mask, embedding = model(inputs)
             outputs = [logits, z, mask]
@@ -300,8 +301,10 @@ if __name__ == "__main__":
     test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=0, pin_memory=True, collate_fn=collate_fn)
     
     # check if dataloader is working
+    start_time = time.time()
     batch_train = next(iter(train_loader))
-    print (f"Train batch shape: {batch_train['epoch'].shape}")
+    time_elapsed = time.time() - start_time
+    print (f"Train batch shape: {batch_train['epoch'].shape}, Time elapsed: {time_elapsed} seconds")
     
     # Set the device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
