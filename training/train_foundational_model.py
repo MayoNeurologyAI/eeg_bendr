@@ -6,8 +6,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
 from torchvision import transforms
-from eeg2vec.dataset import EpochDataset
-from eeg2vec.transforms import UidToEpoch, RandomTemporalCrop
+from eeg2vec.dataset import EpochDataset, CollateEpochs
+from eeg2vec.transforms import UidToEpoch
 from eeg2vec.model import FoundationalModel, Encoder, Contextualizer
 
 from utils import *
@@ -129,7 +129,7 @@ def get_foundational_model() -> FoundationalModel:
                               encoder_grad_frac=0.1, 
                               num_negatives=20, 
                               enc_feat_l2=1.0,
-                              multi_gpu=False)
+                              multi_gpu=True)
     
     return model
 
@@ -269,7 +269,7 @@ if __name__ == "__main__":
     
     # Load the meta data
     df = pd.read_csv("gs://ml-8880-phi-shared-aif-us-p/eeg_bendr/pretraining/"
-                     "datasets/v20230819/mayo_eeg_pretraining_10405_epochs.csv", index_col=0)
+                     "datasets/v20230819/mayo_eeg_pretraining_10405_epochs.csv", index_col=0).head(10000)
     
     print(f"Number of unique UIDs: {len(df['UID'].unique())}")
     
@@ -284,22 +284,21 @@ if __name__ == "__main__":
     print(f"Number of test UIDs: {len(test_df['UID'].unique())}, Epochs: {len(test_df)}")
     
     # Create the train, valid and test datasets
-    train_transform = transforms.Compose([
-                        UidToEpoch(),
-                        RandomTemporalCrop()
-                        ])
-    test_transform = transforms.Compose([
+    epoch_transforms = transforms.Compose([
                         UidToEpoch()
                         ])
     
-    dataset_train = EpochDataset(train_df, transform=test_transform)
-    dataset_test = EpochDataset(test_df, transform=test_transform)
-    dataset_valid = EpochDataset(valid_df, transform=test_transform)
+    dataset_train = EpochDataset(train_df, transform=epoch_transforms)
+    dataset_test = EpochDataset(test_df, transform=epoch_transforms)
+    dataset_valid = EpochDataset(valid_df, transform=epoch_transforms)
+    
+    # create the collate function
+    collate_fn = CollateEpochs(transform=epoch_transforms)
     
     # Create the train, valid and test data loaders
-    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=64, shuffle=False, num_workers=args.jobs, pin_memory=True)
-    valid_loader = torch.utils.data.DataLoader(dataset_valid, batch_size=64, shuffle=False, num_workers=args.jobs, pin_memory=True)
-    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=args.jobs, pin_memory=True)
+    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=64, shuffle=False, num_workers=0, pin_memory=True, collate_fn=collate_fn)
+    valid_loader = torch.utils.data.DataLoader(dataset_valid, batch_size=64, shuffle=False, num_workers=0, pin_memory=True, collate_fn=collate_fn)
+    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=0, pin_memory=True, collate_fn=collate_fn)
     
     # check if dataloader is working
     batch_train = next(iter(train_loader))
