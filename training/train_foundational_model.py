@@ -316,15 +316,13 @@ if __name__ == "__main__":
     
     if torch.cuda.device_count() > 1:
         print(f"Using {torch.cuda.device_count()} GPUs!")
-        model = torch.nn.DataParallel(model)
+        #model = torch.nn.DataParallel(model)
     
     # Set the optimizer
     optimizer = torch.optim.Adam(model.parameters(), 
                                  lr=0.00002, 
                                  weight_decay=0.01, 
                                  betas=[0.9, 0.98])
-    
-    print(f"Model Summary: {model}")
     
     # train the model
     output_path = "./pretraining_results/"
