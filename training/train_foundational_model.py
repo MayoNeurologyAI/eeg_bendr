@@ -12,7 +12,6 @@ from eeg2vec.model import FoundationalModel, Encoder, Contextualizer
 
 from utils import *
 
-torch.multiprocessing.set_start_method('spawn')
 
 def _split_data(df, train_prop=0.9, eval_prop=0.05, test_prop=0.05):
     """ 
