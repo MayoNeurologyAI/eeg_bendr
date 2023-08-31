@@ -304,7 +304,7 @@ if __name__ == "__main__":
     start_time = time.time()
     batch_train = next(iter(train_loader))
     time_elapsed = time.time() - start_time
-    print (f"Train batch shape: {batch_train['epoch'].shape}, Time elapsed: {time_elapsed} seconds")
+    print (f"Train batch shape: {batch_train.shape}, Time elapsed: {time_elapsed} seconds")
     
     # Set the device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
