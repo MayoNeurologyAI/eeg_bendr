@@ -12,6 +12,8 @@ from eeg2vec.model import FoundationalModel, Encoder, Contextualizer
 
 from utils import *
 
+torch.multiprocessing.set_start_method('spawn')
+
 def _split_data(df, train_prop=0.9, eval_prop=0.05, test_prop=0.05):
     """ 
     This function splits the data into train, test, and eval sets
@@ -127,7 +129,7 @@ def get_foundational_model() -> FoundationalModel:
                               encoder_grad_frac=0.1, 
                               num_negatives=20, 
                               enc_feat_l2=1.0,
-                              multi_gpu=True)
+                              multi_gpu=False)
     
     return model
 
@@ -258,6 +260,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--job_dir", type=str, default="", help="dir to save logs")
+    parser.add_argument("--jobs", type=int, default=8, help="number of jobs for dataloading")
     args = parser.parse_args()
     
     if args.job_dir:
@@ -294,9 +297,9 @@ if __name__ == "__main__":
     dataset_valid = EpochDataset(valid_df, transform=test_transform)
     
     # Create the train, valid and test data loaders
-    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=16, shuffle=True)
-    valid_loader = torch.utils.data.DataLoader(dataset_valid, batch_size=16, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=16, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=64, shuffle=False, num_workers=args.jobs, pin_memory=True)
+    valid_loader = torch.utils.data.DataLoader(dataset_valid, batch_size=64, shuffle=False, num_workers=args.jobs, pin_memory=True)
+    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=args.jobs, pin_memory=True)
     
     # check if dataloader is working
     batch_train = next(iter(train_loader))
