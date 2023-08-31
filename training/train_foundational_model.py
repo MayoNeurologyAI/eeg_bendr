@@ -129,7 +129,7 @@ def get_foundational_model() -> FoundationalModel:
                               encoder_grad_frac=0.1, 
                               num_negatives=20, 
                               enc_feat_l2=1.0,
-                              multi_gpu=True)
+                              multi_gpu=False)
     
     return model
 
@@ -293,12 +293,12 @@ if __name__ == "__main__":
     dataset_valid = EpochDataset(valid_df, transform=epoch_transforms)
     
     # create the collate function
-    collate_fn = CollateEpochs(transform=epoch_transforms)
+    collate_fn = CollateEpochs(transform=epoch_transforms, jobs=args.jobs)
     
     # Create the train, valid and test data loaders
-    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=16, shuffle=False, num_workers=0, pin_memory=True, collate_fn=collate_fn)
-    valid_loader = torch.utils.data.DataLoader(dataset_valid, batch_size=16, shuffle=False, num_workers=0, pin_memory=True, collate_fn=collate_fn)
-    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=16, shuffle=False, num_workers=0, pin_memory=True, collate_fn=collate_fn)
+    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=32, shuffle=False, num_workers=args.jobs, pin_memory=True, collate_fn=collate_fn)
+    valid_loader = torch.utils.data.DataLoader(dataset_valid, batch_size=32, shuffle=False, num_workers=args.jobs, pin_memory=True, collate_fn=collate_fn)
+    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=32, shuffle=False, num_workers=args.jobs, pin_memory=True, collate_fn=collate_fn)
     
     # check if dataloader is working
     start_time = time.time()
