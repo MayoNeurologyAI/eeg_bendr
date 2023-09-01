@@ -1,3 +1,4 @@
+import gc
 import time
 import torch
 import argparse
@@ -129,7 +130,7 @@ def get_foundational_model() -> FoundationalModel:
                               encoder_grad_frac=0.1, 
                               num_negatives=20, 
                               enc_feat_l2=1.0,
-                              multi_gpu=False)
+                              multi_gpu=True)
     
     return model
 
@@ -199,6 +200,12 @@ def train_model(model,
             # calculate the accuracy
             total_score += FoundationalModel.contrastive_accuracy(outputs)
             
+            # free up cpu & gpu memory
+            del inputs, logits, z, mask, embedding, outputs, loss
+            gc.collect()
+            torch.cuda.empty_cache()
+                
+            
         # Calculate the average loss and accuracy for this epoch
         avg_loss = total_loss / len(train_loader)
         avg_score = total_score / len(train_loader) 
@@ -212,6 +219,7 @@ def train_model(model,
         valid_loss.append(val_loss)
         
         print(f'Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, Training: {avg_score:.4f}, Validation: {valid_score:.4f}')
+        print(f'')
         
         # Save the model every 50 epochs
         Path(f"{output_path}/checkpoints").mkdir(parents=True, exist_ok=True)
@@ -228,8 +236,6 @@ def train_model(model,
         
         if scheduler is not None:
             scheduler.step()
-        
-        torch.cuda.empty_cache()
     
     return train_loss, train_scores, valid_loss, valid_scores
 
@@ -246,10 +252,15 @@ def test_model(model, test_loader, device):
             outputs = [logits, z, mask]
             
             # calculate the loss
-            total_loss += model.calculate_loss(outputs)
+            total_loss += model.calculate_loss(outputs).item()
             
             # calculate the accuracy
             total_score += FoundationalModel.contrastive_accuracy(outputs)
+            
+            # free up cpu memory
+            del inputs, logits, z, mask, embedding, outputs
+            gc.collect()
+            torch.cuda.empty_cache()
 
     score = total_score / len(test_loader) 
     loss = total_loss / len(test_loader)
@@ -260,7 +271,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--job_dir", type=str, default="", help="dir to save logs")
-    parser.add_argument("--jobs", type=int, default=8, help="number of jobs for dataloading")
+    parser.add_argument("--epochs", type=int, default=100, help="number of jobs for dataloading")
     args = parser.parse_args()
     
     if args.job_dir:
@@ -293,18 +304,20 @@ if __name__ == "__main__":
     dataset_valid = EpochDataset(valid_df, transform=epoch_transforms)
     
     # create the collate function
-    collate_fn = CollateEpochs(transform=epoch_transforms, jobs=args.jobs)
+    collate_fn = CollateEpochs(transform=epoch_transforms, jobs=-1)
     
     # Create the train, valid and test data loaders
-    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=32, shuffle=False, num_workers=args.jobs, pin_memory=True, collate_fn=collate_fn)
-    valid_loader = torch.utils.data.DataLoader(dataset_valid, batch_size=32, shuffle=False, num_workers=args.jobs, pin_memory=True, collate_fn=collate_fn)
-    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=32, shuffle=False, num_workers=args.jobs, pin_memory=True, collate_fn=collate_fn)
+    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=64, shuffle=False, num_workers=0, pin_memory=True, collate_fn=collate_fn)
+    valid_loader = torch.utils.data.DataLoader(dataset_valid, batch_size=64, shuffle=False, num_workers=0, pin_memory=True, collate_fn=collate_fn)
+    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=64, shuffle=False, num_workers=0, pin_memory=True, collate_fn=collate_fn)
     
     # check if dataloader is working
     start_time = time.time()
     batch_train = next(iter(train_loader))
     time_elapsed = time.time() - start_time
     print (f"Train batch shape: {batch_train.shape}, Time elapsed: {time_elapsed} seconds")
+    del batch_train
+    gc.collect()
     
     # Set the device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -331,11 +344,12 @@ if __name__ == "__main__":
                                                                     train_loader=train_loader,
                                                                     valid_loader=valid_loader,
                                                                     optimizer=optimizer,
-                                                                    epochs=100,
+                                                                    epochs=args.epochs,
                                                                     device=device,
                                                                     output_path=output_path)
     
     # Plot the training and validation loss and accuracy
+    print (f"Plotting the training and validation loss and accuracy")
     _plot_curve(train_losses=train_loss, 
                 valid_losses=valid_loss, 
                 metric= "loss", 
@@ -343,12 +357,14 @@ if __name__ == "__main__":
                 output_path=output_path)
     
     # Plot the log training and validation loss and accuracy
+    print (f"Plotting the training and validation loss and accuracy (log scale)")
     _plot_curve(train_losses=train_loss, 
                 valid_losses=valid_loss, 
                 metric= "loss", 
                 use_log_scale=True, 
                 output_path=output_path)
     
+    print (f"Plotting the training and validation accuracy")
     # plot the training and validation accuracy
     _plot_curve(train_losses=train_scores, 
                 valid_losses=valid_scores, 
