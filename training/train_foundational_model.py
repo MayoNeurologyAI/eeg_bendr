@@ -223,7 +223,7 @@ def train_model(model,
         
         # Save the model every 50 epochs
         Path(f"{output_path}/checkpoints").mkdir(parents=True, exist_ok=True)
-        if (epoch+1) % 50 == 0:
+        if (epoch+1) % 25 == 0:
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),

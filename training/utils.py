@@ -103,7 +103,7 @@ def save_log_to_gcs(log_file_path: str, gcs_path: str) -> bool:
     status = execute_shell_command(command)
     
     # remove log file
-    command = f"rm {log_file_path}"
+    command = f"rm -rf {log_file_path}"
     status = execute_shell_command(command)
     
     return status
